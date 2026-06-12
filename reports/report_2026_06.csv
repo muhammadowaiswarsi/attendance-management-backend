@@ -1,0 +1,5 @@
+employee_id,employee_name,department,present_days,absent_days,half_days,leave_days,holiday_days,total_days,attendance_percentage
+1,Ali Raza,Development,1,0,0,0,0,1,100.0
+2,usman,Development,1,0,0,0,0,1,100.0
+3,wax,HR,0,0,0,0,0,0,0.0
+4,zain,Development,0,0,0,0,0,0,0.0
