@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
 from app.api.department import get_current_admin
-from app.core.config import BACKEND_DIR
+from app.core.config import resolve_storage_path
 from app.database.db import get_db
 from app.models.user import User
 from app.schemas.report import (
@@ -85,7 +85,7 @@ def export_monthly_report(
     _: User = Depends(get_current_admin),
 ):
     relative_path = report_service.export_monthly_report_csv(db, month, year)
-    full_path = BACKEND_DIR / relative_path
+    full_path = resolve_storage_path(relative_path)
 
     if not full_path.exists():
         raise HTTPException(

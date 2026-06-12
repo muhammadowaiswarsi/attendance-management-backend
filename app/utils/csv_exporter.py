@@ -1,9 +1,7 @@
 import csv
 from pathlib import Path
 
-from app.core.config import BACKEND_DIR
-
-REPORTS_DIR = BACKEND_DIR / "reports"
+from app.core.config import REPORTS_DIR
 
 
 def export_attendance_csv(data: list[dict], month: int, year: int) -> str:

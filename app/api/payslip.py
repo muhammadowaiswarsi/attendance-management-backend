@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
 from app.api.department import get_current_admin
-from app.core.config import BACKEND_DIR
+from app.core.config import resolve_storage_path
 from app.database.db import get_db
 from app.models.user import User
 from app.schemas.payslip import PayslipCreate, PayslipResponse
@@ -71,7 +71,7 @@ def download_payslip(
         )
 
     pdf_path = payslip_service.ensure_payslip_pdf(db, payslip)
-    full_path = BACKEND_DIR / pdf_path
+    full_path = resolve_storage_path(pdf_path)
     if not full_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -29,9 +29,9 @@ def send_payslip_email(
 
     full_path = Path(pdf_path)
     if not full_path.is_absolute():
-        from app.core.config import BACKEND_DIR
+        from app.core.config import resolve_storage_path
 
-        full_path = BACKEND_DIR / pdf_path
+        full_path = resolve_storage_path(pdf_path)
 
     if not full_path.exists():
         raise EmailSendError(f"PDF file not found: {pdf_path}")

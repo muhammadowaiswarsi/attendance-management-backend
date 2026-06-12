@@ -11,7 +11,7 @@ from app.schemas.payslip import PayslipCreate
 from app.services import employee_service
 from app.utils.email_sender import EmailSendError, send_payslip_email
 from app.utils.pdf_generator import generate_payslip_pdf
-from app.core.config import BACKEND_DIR
+from app.core.config import resolve_storage_path
 
 
 def _payslip_query(db: Session):
@@ -127,9 +127,7 @@ def send_payslip(db: Session, payslip_id: int) -> dict:
     payslip.pdf_path = pdf_path
     db.flush()
 
-    from app.core.config import BACKEND_DIR
-
-    full_path = BACKEND_DIR / payslip.pdf_path
+    full_path = resolve_storage_path(payslip.pdf_path)
     if not full_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -206,7 +204,7 @@ def _remove_payslip_pdf(pdf_path: str | None) -> None:
 
     full_path = Path(pdf_path)
     if not full_path.is_absolute():
-        full_path = BACKEND_DIR / pdf_path
+        full_path = resolve_storage_path(pdf_path)
 
     if full_path.exists() and full_path.is_file():
         full_path.unlink()
