@@ -48,4 +48,27 @@ EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USERNAME = os.getenv("EMAIL_USERNAME", "")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+PRODUCTION_FRONTEND_URL = "https://attendance-management-frontend-five.vercel.app"
+LOCAL_FRONTEND_URL = "http://localhost:5173"
+
+
+def _is_deployed() -> bool:
+    return bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+
+
+def _is_local_url(url: str) -> bool:
+    lowered = url.lower()
+    return "localhost" in lowered or "127.0.0.1" in lowered
+
+
+def _frontend_url() -> str:
+    configured = (os.getenv("FRONTEND_URL") or "").strip().rstrip("/")
+    if _is_deployed():
+        if configured and not _is_local_url(configured):
+            return configured
+        return PRODUCTION_FRONTEND_URL
+    return configured or LOCAL_FRONTEND_URL
+
+
+FRONTEND_URL = _frontend_url()
