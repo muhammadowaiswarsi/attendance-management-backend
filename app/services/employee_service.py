@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.attendance import Attendance
@@ -21,7 +21,70 @@ def _employee_query(db: Session):
 
 
 def get_employee_by_email(db: Session, email: str) -> Employee | None:
-    return db.query(Employee).filter(Employee.email == email).first()
+    if not email:
+        return None
+    return (
+        db.query(Employee)
+        .filter(func.lower(Employee.email) == email.lower())
+        .first()
+    )
+
+
+def _replacement_user_id(db: Session, user_id: int) -> int | None:
+    admin = (
+        db.query(User.id)
+        .filter(User.id != user_id, User.role == "admin")
+        .order_by(User.id)
+        .first()
+    )
+    if admin:
+        return admin[0]
+
+    other = (
+        db.query(User.id)
+        .filter(User.id != user_id)
+        .order_by(User.id)
+        .first()
+    )
+    return other[0] if other else None
+
+
+def _detach_user_references(db: Session, user_id: int) -> None:
+    replacement_id = _replacement_user_id(db, user_id)
+    if replacement_id is None:
+        db.query(Attendance).filter(Attendance.marked_by == user_id).delete(
+            synchronize_session=False
+        )
+        db.query(Payslip).filter(Payslip.created_by == user_id).delete(
+            synchronize_session=False
+        )
+        return
+
+    db.query(Attendance).filter(Attendance.marked_by == user_id).update(
+        {Attendance.marked_by: replacement_id},
+        synchronize_session=False,
+    )
+    db.query(Payslip).filter(Payslip.created_by == user_id).update(
+        {Payslip.created_by: replacement_id},
+        synchronize_session=False,
+    )
+
+
+def _delete_user_account(db: Session, user_id: int | None) -> None:
+    if not user_id:
+        return
+
+    db.query(PasswordSetupToken).filter(PasswordSetupToken.user_id == user_id).delete(
+        synchronize_session=False
+    )
+    db.query(PasswordResetToken).filter(PasswordResetToken.user_id == user_id).delete(
+        synchronize_session=False
+    )
+    _detach_user_references(db, user_id)
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        db.delete(user)
 
 
 def generate_employee_code(db: Session) -> str:
@@ -39,13 +102,24 @@ def generate_employee_code(db: Session) -> str:
 def create_employee(db: Session, employee_data: EmployeeCreate) -> Employee:
     department_service.get_department_by_id(db, employee_data.department_id)
 
-    if get_user_by_email(db, employee_data.email) or get_employee_by_email(
-        db, employee_data.email
-    ):
+    if get_employee_by_email(db, employee_data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists",
         )
+
+    existing_user = get_user_by_email(db, employee_data.email)
+    if existing_user:
+        linked_employee = (
+            db.query(Employee).filter(Employee.user_id == existing_user.id).first()
+        )
+        if linked_employee or existing_user.role == "admin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists",
+            )
+        _delete_user_account(db, existing_user.id)
+        db.flush()
 
     db_user = User(
         full_name=employee_data.full_name,
@@ -170,6 +244,7 @@ def resend_employee_invitation(db: Session, employee_id: int) -> None:
 def delete_employee(db: Session, employee_id: int) -> None:
     employee = get_employee_by_id(db, employee_id)
     user_id = employee.user_id
+    email = employee.email
 
     db.query(Attendance).filter(Attendance.employee_id == employee_id).delete(
         synchronize_session=False
@@ -177,18 +252,18 @@ def delete_employee(db: Session, employee_id: int) -> None:
     db.query(Payslip).filter(Payslip.employee_id == employee_id).delete(
         synchronize_session=False
     )
-    db.query(PasswordSetupToken).filter(PasswordSetupToken.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    db.query(PasswordResetToken).filter(PasswordResetToken.user_id == user_id).delete(
-        synchronize_session=False
-    )
 
     db.delete(employee)
     db.flush()
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if user:
-        db.delete(user)
+    _delete_user_account(db, user_id)
+
+    leftover_user = get_user_by_email(db, email)
+    if leftover_user and leftover_user.role != "admin":
+        leftover_employee = (
+            db.query(Employee).filter(Employee.user_id == leftover_user.id).first()
+        )
+        if leftover_employee is None:
+            _delete_user_account(db, leftover_user.id)
 
     db.commit()
