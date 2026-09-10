@@ -7,6 +7,7 @@ from app.api.department import router as department_router
 from app.api.employee import router as employee_router
 from app.api.holiday import router as holiday_router
 from app.api.payslip import router as payslip_router
+from app.api.payslip_field import router as payslip_field_router
 from app.api.dashboard import router as dashboard_router
 from app.api.reports import router as reports_router
 from app.database.base import Base
@@ -19,6 +20,7 @@ import app.models.holiday  # noqa: F401
 import app.models.password_reset_token  # noqa: F401
 import app.models.password_setup_token  # noqa: F401
 import app.models.payslip  # noqa: F401
+import app.models.payslip_field  # noqa: F401
 import app.models.user  # noqa: F401
 
 app = FastAPI(title="Attendance System")
@@ -46,6 +48,7 @@ app.include_router(employee_router)
 app.include_router(attendance_router)
 app.include_router(holiday_router)
 app.include_router(payslip_router)
+app.include_router(payslip_field_router)
 app.include_router(reports_router)
 app.include_router(dashboard_router)
 

@@ -1,7 +1,7 @@
 from sqlalchemy import inspect, text
 
 from app.database.base import Base
-from app.database.db import engine
+from app.database.db import SessionLocal, engine
 
 
 def run_migrations() -> None:
@@ -18,6 +18,8 @@ def run_migrations() -> None:
         columns = {column["name"]: column for column in inspect(engine).get_columns("users")}
 
     _add_user_profile_columns(columns)
+    _add_payslip_field_values_column()
+    _seed_payslip_fields()
 
 
 def _add_user_profile_columns(columns: dict) -> None:
@@ -69,3 +71,30 @@ def _migrate_users_nullable_password() -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_id ON users (id)"))
 
         conn.execute(text("PRAGMA foreign_keys=ON"))
+
+
+def _add_payslip_field_values_column() -> None:
+    inspector = inspect(engine)
+    if not inspector.has_table("payslips"):
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("payslips")}
+    if "field_values" in columns:
+        return
+
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE payslips ADD COLUMN field_values JSON"))
+
+
+def _seed_payslip_fields() -> None:
+    inspector = inspect(engine)
+    if not inspector.has_table("payslip_fields"):
+        return
+
+    from app.services.payslip_field_service import seed_default_payslip_fields
+
+    db = SessionLocal()
+    try:
+        seed_default_payslip_fields(db)
+    finally:
+        db.close()

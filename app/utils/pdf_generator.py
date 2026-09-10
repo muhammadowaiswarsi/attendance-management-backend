@@ -15,6 +15,7 @@ from reportlab.platypus import (
 from app.core.config import BACKEND_DIR, PAYSLIPS_DIR
 from app.models.employee import Employee
 from app.models.payslip import Payslip
+from app.services.payslip_field_service import split_line_items
 
 COMPANY_ADDRESS = (
     "Faiyaz Center, Office No: 08, Shahrah-e-Faisal Rd, "
@@ -228,18 +229,9 @@ def generate_payslip_pdf(payslip: Payslip, employee: Employee) -> str:
     elements.append(Spacer(1, 0.12 * inch))
 
     # 4. Earnings | Deductions (two tables side by side, matching web)
-    earnings_data = [
-        ["Earnings", ""],
-        ["Basic Salary", _format_amount(payslip.basic_salary)],
-        ["Bonus", _format_amount(payslip.allowances)],
-        ["Over Time", "-"],
-    ]
-    deductions_data = [
-        ["Deductions", ""],
-        ["Tax Deduction", _format_amount(payslip.deductions)],
-        ["PF", "-"],
-        ["Loan", "-"],
-    ]
+    earnings_rows, deduction_rows = _payslip_line_items(payslip)
+    earnings_data = [["Earnings", ""], *earnings_rows]
+    deductions_data = [["Deductions", ""], *deduction_rows]
 
     earnings_table = Table(
         earnings_data,
@@ -290,3 +282,29 @@ def generate_payslip_pdf(payslip: Payslip, employee: Employee) -> str:
 
     doc.build(elements)
     return relative_path
+
+
+def _payslip_line_items(payslip: Payslip) -> tuple[list[list[str]], list[list[str]]]:
+    snapshots = payslip.field_values
+    if snapshots:
+        earnings, deductions = split_line_items(snapshots)
+        earnings_rows = [
+            [name, _format_amount(value)] for name, value in earnings
+        ] or [["—", "-"]]
+        deduction_rows = [
+            [name, _format_amount(value)] for name, value in deductions
+        ] or [["—", "-"]]
+        return earnings_rows, deduction_rows
+
+    return (
+        [
+            ["Basic Salary", _format_amount(payslip.basic_salary)],
+            ["Bonus", _format_amount(payslip.allowances)],
+            ["Over Time", "-"],
+        ],
+        [
+            ["Tax Deduction", _format_amount(payslip.deductions)],
+            ["PF", "-"],
+            ["Loan", "-"],
+        ],
+    )

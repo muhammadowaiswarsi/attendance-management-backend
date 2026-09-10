@@ -8,7 +8,7 @@ from app.models.employee import Employee
 from app.models.payslip import Payslip
 from app.models.user import User
 from app.schemas.payslip import PayslipCreate
-from app.services import employee_service
+from app.services import employee_service, payslip_field_service
 from app.utils.email_sender import EmailSendError, send_payslip_email
 from app.utils.pdf_generator import generate_payslip_pdf
 from app.core.config import resolve_storage_path
@@ -58,19 +58,32 @@ def create_payslip(
             detail="Payslip already exists for this employee, month and year",
         )
 
-    net_salary = (
-        payslip_data.basic_salary
-        + payslip_data.allowances
-        - payslip_data.deductions
+    field_snapshots = payslip_field_service.build_field_value_snapshots(
+        db,
+        payslip_data.field_values,
+        payslip_data.basic_salary,
+        payslip_data.allowances,
+        payslip_data.deductions,
+    )
+    net_salary = payslip_field_service.calculate_net_salary(field_snapshots)
+    if net_salary <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Net salary must be greater than 0",
+        )
+
+    basic_salary, allowances, deductions = payslip_field_service.snapshot_column_values(
+        field_snapshots
     )
 
     db_payslip = Payslip(
         employee_id=payslip_data.employee_id,
         month=payslip_data.month,
         year=payslip_data.year,
-        basic_salary=payslip_data.basic_salary,
-        allowances=payslip_data.allowances,
-        deductions=payslip_data.deductions,
+        basic_salary=basic_salary,
+        allowances=allowances,
+        deductions=deductions,
+        field_values=field_snapshots,
         net_salary=net_salary,
         created_by=current_user.id,
     )

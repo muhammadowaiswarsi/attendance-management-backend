@@ -24,6 +24,7 @@ TABLE_ORDER = [
     "holidays",
     "attendance",
     "payslips",
+    "payslip_fields",
     "password_setup_tokens",
     "password_reset_tokens",
 ]

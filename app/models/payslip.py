@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -18,6 +18,7 @@ class Payslip(Base):
     basic_salary = Column(Float, nullable=False)
     allowances = Column(Float, default=0, nullable=False)
     deductions = Column(Float, default=0, nullable=False)
+    field_values = Column(JSON, nullable=True)
     net_salary = Column(Float, nullable=False)
     pdf_path = Column(String, nullable=True)
     sent_at = Column(DateTime, nullable=True)
