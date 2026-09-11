@@ -299,12 +299,9 @@ def _payslip_line_items(payslip: Payslip) -> tuple[list[list[str]], list[list[st
     return (
         [
             ["Basic Salary", _format_amount(payslip.basic_salary)],
-            ["Bonus", _format_amount(payslip.allowances)],
-            ["Over Time", "-"],
+            ["Allowances", _format_amount(payslip.allowances)],
         ],
         [
-            ["Tax Deduction", _format_amount(payslip.deductions)],
-            ["PF", "-"],
-            ["Loan", "-"],
+            ["Deductions", _format_amount(payslip.deductions)],
         ],
     )
