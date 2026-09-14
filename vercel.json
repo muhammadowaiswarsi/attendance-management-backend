@@ -12,6 +12,12 @@
       "dest": "app/main.py"
     }
   ],
+  "crons": [
+    {
+      "path": "/health",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "env": {
     "FRONTEND_URL": "https://attendance-management-frontend-five.vercel.app"
   }

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.api.attendance import router as attendance_router
 from app.api.auth import router as auth_router
@@ -56,3 +58,23 @@ app.include_router(dashboard_router)
 @app.get("/")
 def home():
     return {"message": "Attendance System Running"}
+
+
+@app.get("/health")
+def health():
+    """Keep-alive endpoint: wakes the API and pings the database."""
+    database_ok = False
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        database_ok = True
+    except Exception:
+        database_ok = False
+
+    return JSONResponse(
+        status_code=200 if database_ok else 503,
+        content={
+            "status": "ok" if database_ok else "degraded",
+            "database": database_ok,
+        },
+    )
